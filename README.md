@@ -169,7 +169,7 @@ Stay tuned for updates as we continue to refine and expand the capabilities of *
 
 ## Acknowledgements
 
-This work builds upon the codebases of **[VERL](https://github.com/volcengine/verl)** and **[EasyR1](https://github.com/hiyouga/EasyR1)**, extending their foundations to enhance 3D spatial reasoning in VLMs. We sincerely appreciate the EasyR1 development team for their generous support and insightful guidance throughout our implementation process. Additionally, this project was inspired by **[RAGEN](https://github.com/ZihanWang314/ragen)**, whose code provided valuable insights into the adaptation of **DeepSeek-R1** for new tasks. Their work greatly contributed to our understanding of **reinforcement learning strategies** in this context.  
+This work builds upon the codebases of **[VERL](https://github.com/volcengine/verl)** and **[EasyR1](https://github.com/hiyouga/EasyR1)**, extending their foundations to enhance 3D spatial reasoning in VLMs. We sincerely appreciate the EasyR1 development team for their generous support and insightful guidance throughout our implementation process. Additionally, this project was inspired by **[RAGEN](https://github.com/ZihanWang314/ragen)**, whose code provided valuable insights into the adaptation of **DeepSeek-R1** for new tasks. Their work greatly contributed to our understanding of **reinforcement learning strategies** in this context. We would also like to express our gratitude to **[Zhuo Liu](https://joeliuz6.github.io/)** for the valuable discussions that contributed to this work.
 
 ## Citation
 If you find this work useful, please consider give us a star! Also, please consider citing:
