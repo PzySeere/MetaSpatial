@@ -159,6 +159,8 @@ We plan to further improve and expand **MetaSpatial** with the following updates
 
 4. **Comprehensive Report Paper**: We will soon release a more detailed report summarizing our findings, experimental results, and technical insights into **MetaSpatial**.
 
+5. **Training Speed Optimization**: Due to time and resource constraints, development has been handled by few contributors. There are several potential optimizations to accelerate training, such as **replacing GPT-4o scoring with a locally deployed high-performance VLM**, exploring **faster rendering alternatives to Blender**, and refining the overall pipeline for **more efficient computation**.
+
 Stay tuned for updates as we continue to refine and expand the capabilities of **MetaSpatial**!
 
 ## Contributors
