@@ -2,7 +2,7 @@
 
 # MetaSpatial: Reinforcing 3D Spatial Reasoning in VLMs for the Metaverse
 
-[![arXiv](https://img.shields.io/badge/arXiv-XX.XXXX-ff0000.svg?style=for-the-badge)](https://github.com/PzySeere/MetaSpatial)  [![Github](https://img.shields.io/badge/MetaSpatial-000000?style=for-the-badge&logo=github&logoColor=000&logoColor=white)](https://github.com/PzySeere/MetaSpatial)  [![Notion](https://img.shields.io/badge/Notion-%23000000.svg?style=for-the-badge&logo=notion&logoColor=white)](https://github.com/PzySeere/MetaSpatial)  [![Hugging Face Collection](https://img.shields.io/badge/PRIME_Collection-fcd022?style=for-the-badge&logo=huggingface&logoColor=000)](https://huggingface.co/datasets/zhenyupan/3d_layout_reasoning)
+[![arXiv](https://img.shields.io/badge/arXiv-2503.18470-ff0000.svg?style=for-the-badge)](https://github.com/PzySeere/MetaSpatial)  [![Github](https://img.shields.io/badge/MetaSpatial-000000?style=for-the-badge&logo=github&logoColor=000&logoColor=white)](https://github.com/PzySeere/MetaSpatial)  [![Notion](https://img.shields.io/badge/Notion-%23000000.svg?style=for-the-badge&logo=notion&logoColor=white)](https://github.com/PzySeere/MetaSpatial)  [![Hugging Face Collection](https://img.shields.io/badge/PRIME_Collection-fcd022?style=for-the-badge&logo=huggingface&logoColor=000)](https://huggingface.co/datasets/zhenyupan/3d_layout_reasoning)
 </div>
 
 
