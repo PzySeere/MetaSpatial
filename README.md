@@ -174,14 +174,11 @@ This work builds upon the codebases of **[VERL](https://github.com/volcengine/ve
 ## Citation
 If you find this work useful, please consider give us a star! Also, please consider citing:
 ```md
-@misc{pan2025metaspatialreinforcing3dspatial,
-      title={MetaSpatial: Reinforcing 3D Spatial Reasoning in VLMs for the Metaverse}, 
-      author={Zhenyu Pan and Han Liu},
-      year={2025},
-      eprint={2503.18470},
-      archivePrefix={arXiv},
-      primaryClass={cs.CV},
-      url={https://arxiv.org/abs/2503.18470}, 
+@article{pan2025metaspatial,
+  title={MetaSpatial: Reinforcing 3D Spatial Reasoning in VLMs for the Metaverse},
+  author={Pan, Zhenyu and Liu, Han},
+  journal={arXiv preprint arXiv:2503.18470},
+  year={2025}
 }
 ```
 
