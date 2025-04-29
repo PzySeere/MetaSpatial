@@ -131,6 +131,8 @@ class RLHFDataset(Dataset):
                     process_image(image, self.max_pixels, self.min_pixels) for image in row_dict.pop(self.image_key)
                 ]
             }
+            # print("prompt", prompt)
+            # print("type", type(prompt))
             model_inputs = self.processor(row_dict["multi_modal_data"]["image"], prompt, return_tensors="pt")
             input_ids = model_inputs.pop("input_ids")[0]
             attention_mask = model_inputs.pop("attention_mask")[0]

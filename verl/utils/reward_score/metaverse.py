@@ -25,7 +25,7 @@ import os
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 from metaverse_utils import check_constraints, check_collisions
 client = OpenAI(api_key=os.environ['OPENAI_API_KEY'])
-rooms_folder = '/projects/p32364/Metaverse-R1/curated_data'
+rooms_folder = '/projects/p32364/MetaSpatial/curated_data'
 # Example JSON format for the response
 example_json = """
 {
@@ -189,7 +189,7 @@ def metaverse_format_reward(predict_str: str, room_name: str) -> float:
     return 1.0
 
 
-def metaverse_gpt4_reward(predict_str: str, room_name: str, user_preference: str, size_of_room: str) -> float:
+def metaverse_gpt4_reward(predict_str: str, room_name: str, user_preference: str, size_of_room: str, step_number) -> float:
     answer_json = extract_json_from_text(predict_str)
     if answer_json is None:
         print("Error: answer_json is None!")
@@ -245,8 +245,8 @@ def metaverse_gpt4_reward(predict_str: str, room_name: str, user_preference: str
             json.dump(final_json, f, indent=4)
         print(f"File written successfully: {os.path.join(rooms_folder, room_name, 'scene_graph-backtracked-updated.json')}")
         #generate the blend file and render the image
-        os.system(f'/projects/p32364/envs/3d-retriever/bin/python /projects/p32364/Metaverse-R1/3d_utlis/place_in_blender.py --room_name {room_name} --step_number 1 --ground_truth false')
-        image_path = os.path.join(rooms_folder, room_name, 'render_output_step_1.png')
+        os.system(f'/projects/p32364/envs/3d-retriever/bin/python /projects/p32364/MetaSpatial/3d_utlis/place_in_blender.py --room_name {room_name} --step_number {step_number} --ground_truth false')
+        image_path = os.path.join(rooms_folder, room_name, f'render_output_step_{step_number}.png')
         #evaluate the image
         grading, last_response = gpt4o_evaluate_rooms([image_path], user_preference)
         print('--------------------------------')
@@ -259,7 +259,7 @@ def metaverse_gpt4_reward(predict_str: str, room_name: str, user_preference: str
         return 0    
     return grading
 
-def metaverse_compute_score(predict_str: str, ground_truth: str) -> float:
+def metaverse_compute_score(predict_str: str, ground_truth: str, step_number: int) -> float:
     ground_truth_json = json.loads(ground_truth)
     print('ground_truth_json', ground_truth_json)
     room_name = ground_truth_json['room_name']
@@ -269,7 +269,7 @@ def metaverse_compute_score(predict_str: str, ground_truth: str) -> float:
     print('format_reward', format_reward)
     if format_reward == 1.0:
         print('format_reward', format_reward)
-        gpt4_reward = metaverse_gpt4_reward(predict_str, room_name, user_preference, size_of_room)
+        gpt4_reward = metaverse_gpt4_reward(predict_str, room_name, user_preference, size_of_room, step_number)
     else:
         return 0.5*format_reward
     print('gpt4_reward', gpt4_reward)

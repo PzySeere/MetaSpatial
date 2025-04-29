@@ -11,7 +11,7 @@ parser.add_argument("--room_name", type=str, required=True, help="Room name to p
 parser.add_argument("--step_number", type=int, required=True, help="Step number to process")
 parser.add_argument("--ground_truth", type=lambda x: bool(strtobool(x)), required=True, help="Ground truth or not")
 args = parser.parse_args()
-room_path = os.path.join("/projects/p32364/Metaverse-R1/curated_data", args.room_name)
+room_path = os.path.join("/projects/p32364/MetaSpatial/curated_data", args.room_name)
 ground_truth = args.ground_truth
 
 object_name = 'Cube'

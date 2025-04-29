@@ -23,7 +23,7 @@ from copy import deepcopy
 from dataclasses import dataclass, field
 from enum import Enum, IntEnum, auto
 from typing import Any, Callable, Dict, List, Optional, Type
-
+import json
 import numpy as np
 import ray
 import torch
@@ -31,7 +31,8 @@ from codetiming import Timer
 from torch.utils.data import RandomSampler, SequentialSampler
 from torchdata.stateful_dataloader import StatefulDataLoader
 from transformers import PreTrainedTokenizer, ProcessorMixin
-
+from PIL import Image
+from io import BytesIO
 from ..protocol import DataProto, pad_dataproto_to_divisor, unpad_dataproto
 from ..single_controller.base import Worker
 from ..single_controller.ray import RayClassWithInitArgs, RayResourcePool, RayWorkerGroup
@@ -43,11 +44,34 @@ from ..utils.tracking import Tracking, ValGenerationsLogger
 from ..workers.fsdp_workers import FSDPWorker
 from . import core_algos
 from .config import PPOConfig
+from datasets import Dataset, Features, Value, Image as HFImage
 from .metrics import compute_data_metrics, compute_throughout_metrics, compute_timing_metrics, reduce_metrics
 
 
 WorkerType = Type[Worker]
 
+def convert_image(image_path):
+    """
+    Args:
+        image_path: str, the path of the image
+    Returns:
+        Dict {"bytes": ..., "path": ...}, if the file exists
+        None, if the file does not exist
+    """
+    if not os.path.exists(image_path):
+        return None
+
+    with open(image_path, "rb") as f:
+        image_bytes = f.read()
+    
+    return {
+        "bytes": image_bytes,
+        "path": os.path.basename(image_path)
+    }
+
+def compute_discounted_reward(rewards, gamma=0.9):
+    weights = [gamma ** i for i in range(len(rewards))]
+    return sum(w * r for w, r in zip(weights, rewards)) / sum(weights)
 
 class Role(IntEnum):
     """
@@ -382,6 +406,7 @@ class RayPPOTrainer:
         sample_inputs, sample_outputs, sample_scores = [], [], []
         for test_data in self.val_dataloader:
             test_batch = DataProto.from_single_dict(test_data)
+            test_batch.meta_info["step_idx"] = 10
             # Store original inputs
             input_ids = test_batch.batch["input_ids"]
             input_texts = [self.tokenizer.decode(ids, skip_special_tokens=True) for ids in input_ids]
@@ -669,9 +694,101 @@ class RayPPOTrainer:
                             raise NotImplementedError("RM is not supported for PPO yet.")
 
                         # we combine with rule-based rm
+                        batch.meta_info["step_idx"] = 1
                         reward_tensor = self.reward_fn(batch)
-                        batch.batch["token_level_scores"] = reward_tensor
 
+
+                        #########test multi-step reward#########
+                        # response_ids = batch.batch["responses"]
+                        # valid_response_ids = response_ids[:valid_response_length]
+                        # history = valid_response_ids
+
+                        rooms_folder = '/projects/p32364/MetaSpatial/curated_data'
+                        rewards_list = [[] for _ in range(len(batch))]
+                        for i in range(len(batch)):
+                            len_of_sample_prompt = batch.batch["prompts"][i].shape[-1]
+                            valid_response_length = int(batch.batch["attention_mask"][i][len_of_sample_prompt:].sum().item())
+                            rewards_list[i].append(reward_tensor[i, valid_response_length - 1])
+
+                        responses_list = [[self.tokenizer.decode(batch.batch["responses"][i], skip_special_tokens=True)] for i in range(len(batch))]
+                        room_name_list = []                        
+                        for i in range(len(batch)):
+                            json_ground_truth = batch[i].non_tensor_batch["ground_truth"]
+                            json_ground_truth = json.loads(json_ground_truth)
+                            room_name = json_ground_truth['room_name']
+                            room_name_list.append(room_name)
+
+                        exist_images_list = [[os.path.join(rooms_folder, room_name_list[i], "render_output.png")] for i in range(len(batch))]
+                        initial_prompt_list = [batch.batch["prompts"][i] for i in range(len(batch))]
+                        raw_responses_list = [[] for _ in range(len(batch))]
+                        for i in range(len(batch)):
+                            ##check if the initial image exists
+                            if os.path.exists(os.path.join(rooms_folder, room_name_list[i], f"render_output_1.png")):
+                                exist_images_list[i].append(os.path.join(rooms_folder, room_name_list[i], f"render_output_1.png"))
+        
+                        for step_idx in range(2, 4):
+                            print(f"step_idx: {step_idx}")
+                            input("Press Enter to continue...!!!!!!!!!")
+                            single_step_data = []
+                            for i in range(len(batch)):
+                                room_image_path = os.path.join(rooms_folder, room_name_list[i], f"render_output_{step_idx-1}.png")
+                                if os.path.exists(room_image_path):
+                                    image = Image.open(room_image_path).convert("RGB")
+                                    exist_images_list[i].append(room_image_path)
+                                else:
+                                    image = Image.open(exist_images_list[i][-1]).convert("RGB")
+                                text = responses_list[i][-1]
+                                prompt = f"{initial_prompt_list[i]}\n The above is the basic task description. The following content is the previous step response and reward. Please generate the next step response! \n ---Previous Step Response---\n{text}\n---Previous Reward---\n{rewards_list[i][step_idx-2]}\n---Current Step---\n"                                    
+                                single_step_data.append({
+                                    "problem": prompt,
+                                    "answer": batch[i].non_tensor_batch["ground_truth"],  # 继续沿用原 ground truth
+                                    "images": [image],
+                                })
+                            features = Features({
+                                "problem": Value("string"),
+                                "answer": Value("string"),
+                                "images": [HFImage()]
+                            })           
+                            step_dataset = Dataset.from_list(single_step_data, features=features)
+                            save_dir = f"./temp_single_step_step{step_idx}"
+                            os.makedirs(save_dir, exist_ok=True)
+                            save_path = os.path.join(save_dir, "data.parquet")
+                            step_dataset.to_parquet(save_path)
+                            temp_dataset = RLHFDataset(
+                                data_path=save_path,
+                                tokenizer=self.tokenizer,
+                                processor=self.processor,
+                                prompt_key=self.config.data.prompt_key,
+                                answer_key=self.config.data.answer_key,
+                                image_key=self.config.data.image_key,
+                                max_prompt_length=self.config.data.max_prompt_length,
+                                truncation="right",
+                                system_prompt=self.config.data.system_prompt,
+                                min_pixels=self.config.data.min_pixels,
+                                max_pixels=self.config.data.max_pixels,                                
+                            )            
+                            temp_sample_list = [temp_dataset[j] for j in range(len(temp_dataset))]
+                            gen_batch = collate_fn(temp_sample_list)
+                            gen_batch = DataProto.from_single_dict(gen_batch)  # ✅ 正确类型
+
+                            gen_output = self.actor_rollout_wg.generate_sequences(gen_batch)
+                            gen_output.meta_info["step_idx"] = step_idx
+                            reward_tensor = self.reward_fn(gen_output)                            
+                            for i in range(len(batch)):
+                                new_response = gen_output.batch["responses"][i]
+                                responses_list[i].append(self.tokenizer.decode(new_response, skip_special_tokens=True))
+
+                                valid_response_length_new = gen_output.batch["attention_mask"][i].sum().item()                               
+                                rewards_list[i].append(reward_tensor[i, valid_response_length_new - 1])
+                                raw_responses_list[i].append(new_response)
+                        for i in range(len(batch)):
+                            final_reward = compute_discounted_reward(rewards_list[i])
+                            valid_response_length_new = gen_output.batch["attention_mask"][i].sum().item()                               
+                            reward_tensor[i, valid_response_length_new - 1] = final_reward
+                            batch.batch["responses"][i] = raw_responses_list[i][-1]
+
+                        batch.batch["token_level_scores"] = reward_tensor
+                        #########test multi-step reward#########
                         # compute rewards. apply_kl_penalty if available
                         if not self.config.worker.actor.use_kl_loss:  # not grpo's kl loss
                             batch, kl_metrics = apply_kl_penalty(
@@ -680,7 +797,6 @@ class RayPPOTrainer:
                             metrics.update(kl_metrics)
                         else:
                             batch.batch["token_level_rewards"] = batch.batch["token_level_scores"]
-
                         # compute advantages, executed on the driver process
                         batch = compute_advantage(
                             batch,

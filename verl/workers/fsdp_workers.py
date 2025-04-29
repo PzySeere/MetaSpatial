@@ -492,7 +492,6 @@ class FSDPWorker(Worker):
 
         if self._use_param_offload:
             load_fsdp_model(self.fsdp_module)
-
         meta_info = {
             "eos_token_id": self.generation_config.eos_token_id
             if self.generation_config is not None

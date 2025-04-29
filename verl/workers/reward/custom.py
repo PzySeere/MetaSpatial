@@ -55,8 +55,8 @@ class CustomRewardManager:
             response_str = self.tokenizer.decode(valid_response_ids, skip_special_tokens=True)
 
             ground_truth = data_item.non_tensor_batch["ground_truth"]
-
-            score = self.compute_score(response_str, ground_truth)
+            step_number = data_item.meta_info["step_idx"]
+            score = self.compute_score(response_str, ground_truth, step_number)
             reward_tensor[i, valid_response_length - 1] = score
 
             if already_print < self.num_examine:

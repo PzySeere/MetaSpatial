@@ -6,7 +6,7 @@ data:
   image_key: images
   max_prompt_length: 12800
   max_response_length: 4000
-  rollout_batch_size: 16
+  rollout_batch_size: 3
   shuffle: true
   seed: 1
   max_pixels: 4194304
@@ -18,7 +18,7 @@ algorithm:
 
 worker:
   actor:
-    global_batch_size: 16
+    global_batch_size: 3
     micro_batch_size_per_device_for_update: 1
     micro_batch_size_per_device_for_experience: 1
     max_grad_norm: 1.0
@@ -61,17 +61,17 @@ worker:
     compute_score: metaverse
 
 trainer:
-  total_episodes: 15
+  total_episodes: 2
   logger: ["console", "wandb"]
   project_name: metaverse-r1
   experiment_name: qwen2_5_3b_3d_reasoning
   n_gpus_per_node: 4
   nnodes: 1
-  val_freq: 2
-  val_before_train: true
+  val_freq: 4
+  val_before_train: false
   val_only: false
   val_generations_to_log: 1
-  save_freq: 3
+  save_freq: 1
   remove_previous_ckpt: true
   remove_ckpt_after_load: false
   save_checkpoint_path: null
