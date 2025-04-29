@@ -738,7 +738,7 @@ class RayPPOTrainer:
                                 else:
                                     image = Image.open(exist_images_list[i][-1]).convert("RGB")
                                 text = responses_list[i][-1]
-                                prompt = f"{initial_prompt_list[i]}\n The above is the basic task description. The following content is the previous step response and reward. Please generate the next step response! \n ---Previous Step Response---\n{text}\n---Previous Reward---\n{rewards_list[i][step_idx-2]}\n---Current Step---\n"                                    
+                                prompt = f"<image>{initial_prompt_list[i]}\n The above is the basic task description. The following content is the previous step response and reward. Please generate the next step response! \n ---Previous Step Response---\n{text}\n---Previous Reward---\n{rewards_list[i][step_idx-2]}\n---Current Step---\n"                                    
                                 single_step_data.append({
                                     "problem": prompt,
                                     "answer": batch[i].non_tensor_batch["ground_truth"],  # 继续沿用原 ground truth
