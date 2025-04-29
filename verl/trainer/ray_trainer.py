@@ -768,9 +768,18 @@ class RayPPOTrainer:
                                 max_pixels=self.config.data.max_pixels,                                
                             )            
                             temp_sample_list = [temp_dataset[j] for j in range(len(temp_dataset))]
-                            gen_batch = collate_fn(temp_sample_list)
-                            gen_batch = DataProto.from_single_dict(gen_batch)  # ✅ 正确类型
-
+                            batch_dict = collate_fn(temp_sample_list)
+                            gen_batch = DataProto.from_single_dict(batch_dict)  
+                            if "multi_modal_inputs" in gen_batch.non_tensor_batch.keys():
+                                gen_batch = gen_batch.pop(
+                                    batch_keys=["input_ids", "attention_mask", "position_ids"],
+                                    non_tensor_batch_keys=["raw_prompt_ids", "multi_modal_data", "multi_modal_inputs"],
+                                )
+                            else:
+                                gen_batch = gen_batch.pop(
+                                    batch_keys=["input_ids", "attention_mask", "position_ids"],
+                                    non_tensor_batch_keys=["raw_prompt_ids"],
+                                )
                             gen_output = self.actor_rollout_wg.generate_sequences(gen_batch)
                             gen_output.meta_info["step_idx"] = step_idx
                             reward_tensor = self.reward_fn(gen_output)                            
