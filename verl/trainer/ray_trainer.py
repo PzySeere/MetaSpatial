@@ -624,7 +624,11 @@ class RayPPOTrainer:
 
                 metrics, timing_raw = {}, {}
                 batch: DataProto = DataProto.from_single_dict(batch_dict)
-
+                print("len of batch: ", len(batch))
+                print("len of batch.batch: ", len(batch.batch))
+                for k, v in batch.batch.items():
+                    print(f"batch {k}: {type(v)}, shape/len: {getattr(v, 'shape', len(v))}")
+                input("Press Enter to continue...!!!!!!!!!")
                 # pop those keys for generation
                 if "multi_modal_inputs" in batch.non_tensor_batch.keys():
                     gen_batch = batch.pop(
@@ -641,7 +645,8 @@ class RayPPOTrainer:
                     # generate a batch
                     with _timer("gen", timing_raw):  # wg: worker group
                         gen_batch_output = self.actor_rollout_wg.generate_sequences(gen_batch)
-
+                        print("len of gen_batch_output: ", len(gen_batch_output))
+                        input("Press Enter to continue...!!!!!!!!!")
                     if self.config.algorithm.adv_estimator == "remax":
                         with _timer("gen_max", timing_raw):
                             gen_baseline_batch = deepcopy(gen_batch)
@@ -662,6 +667,9 @@ class RayPPOTrainer:
                     # repeat to align with repeated responses in rollout
                     batch = batch.repeat(repeat_times=self.config.worker.rollout.n, interleave=True)
                     batch = batch.union(gen_batch_output)
+                    print("len of batch after repeat: ", len(batch))
+                    print("len of batch.batch after repeat: ", len(batch.batch))
+                    input("Press Enter to continue...!!!!!!!!!")
 
                     # balance the number of valid tokens on each dp rank.
                     # Note that this breaks the order of data inside the batch.
@@ -696,6 +704,11 @@ class RayPPOTrainer:
                         # we combine with rule-based rm
                         batch.meta_info["step_idx"] = 1
                         reward_tensor = self.reward_fn(batch)
+                        print("len of reward_tensor: ", len(reward_tensor))
+                        input("Press Enter to continue...!!!!!!!!!")
+                        for i in range(len(batch)):
+                            print("prompt: ", batch.batch["prompts"][i])
+                            # input("Press Enter to continue...!!!!!!!!!")
 
 
                         #########test multi-step reward#########
@@ -704,33 +717,33 @@ class RayPPOTrainer:
                         # history = valid_response_ids
 
                         rooms_folder = '/projects/p32364/MetaSpatial/curated_data'
-                        rewards_list = [[] for _ in range(len(batch))]
-                        for i in range(len(batch)):
+                        rewards_list = [[] for _ in range(len(batch) // self.config.worker.rollout.n)]
+                        for i in range(len(batch) // self.config.worker.rollout.n):
                             len_of_sample_prompt = batch.batch["prompts"][i].shape[-1]
                             valid_response_length = int(batch.batch["attention_mask"][i][len_of_sample_prompt:].sum().item())
                             rewards_list[i].append(reward_tensor[i, valid_response_length - 1])
 
-                        responses_list = [[self.tokenizer.decode(batch.batch["responses"][i], skip_special_tokens=True)] for i in range(len(batch))]
+                        responses_list = [[self.tokenizer.decode(batch.batch["responses"][i], skip_special_tokens=True)] for i in range(len(batch) // self.config.worker.rollout.n)]
                         room_name_list = []                        
-                        for i in range(len(batch)):
+                        for i in range(len(batch) // self.config.worker.rollout.n):
                             json_ground_truth = batch[i].non_tensor_batch["ground_truth"]
                             json_ground_truth = json.loads(json_ground_truth)
                             room_name = json_ground_truth['room_name']
                             room_name_list.append(room_name)
 
-                        exist_images_list = [[os.path.join(rooms_folder, room_name_list[i], "render_output.png")] for i in range(len(batch))]
-                        initial_prompt_list = [batch.batch["prompts"][i] for i in range(len(batch))]
-                        raw_responses_list = [[] for _ in range(len(batch))]
-                        for i in range(len(batch)):
+                        exist_images_list = [[os.path.join(rooms_folder, room_name_list[i], "render_output.png")] for i in range(len(batch) // self.config.worker.rollout.n)]
+                        initial_prompt_list = [batch.batch["prompts"][i] for i in range(len(batch) // self.config.worker.rollout.n)]
+                        raw_responses_list = [[] for _ in range(len(batch) // self.config.worker.rollout.n)]
+                        for i in range(len(batch) // self.config.worker.rollout.n):
                             ##check if the initial image exists
                             if os.path.exists(os.path.join(rooms_folder, room_name_list[i], f"render_output_1.png")):
                                 exist_images_list[i].append(os.path.join(rooms_folder, room_name_list[i], f"render_output_1.png"))
         
                         for step_idx in range(2, 4):
                             print(f"step_idx: {step_idx}")
-                            input("Press Enter to continue...!!!!!!!!!")
+                            # input("Press Enter to continue...!!!!!!!!!")
                             single_step_data = []
-                            for i in range(len(batch)):
+                            for i in range(len(batch) // self.config.worker.rollout.n):
                                 room_image_path = os.path.join(rooms_folder, room_name_list[i], f"render_output_{step_idx-1}.png")
                                 if os.path.exists(room_image_path):
                                     image = Image.open(room_image_path).convert("RGB")
@@ -770,6 +783,13 @@ class RayPPOTrainer:
                             temp_sample_list = [temp_dataset[j] for j in range(len(temp_dataset))]
                             batch_dict = collate_fn(temp_sample_list)
                             gen_batch = DataProto.from_single_dict(batch_dict)  
+                            print("len of gen_batch: ", len(gen_batch))
+                            print("len of gen_batch.batch: ", len(gen_batch.batch))
+                            for k, v in gen_batch.batch.items():
+                                print(f"gen_batch {k}: {type(v)}, shape/len: {getattr(v, 'shape', len(v))}")
+                            input("Press Enter to continue...!!!!!!!!!")
+                            #pop the key answer
+                            answer_key = batch.pop(batch_keys=["input_ids"], non_tensor_batch_keys=["ground_truth"])
                             if "multi_modal_inputs" in gen_batch.non_tensor_batch.keys():
                                 gen_batch = gen_batch.pop(
                                     batch_keys=["input_ids", "attention_mask", "position_ids"],
@@ -780,13 +800,22 @@ class RayPPOTrainer:
                                     batch_keys=["input_ids", "attention_mask", "position_ids"],
                                     non_tensor_batch_keys=["raw_prompt_ids"],
                                 )
+                            
                             gen_output = self.actor_rollout_wg.generate_sequences(gen_batch)
                             gen_output.meta_info["step_idx"] = step_idx
-                            reward_tensor = self.reward_fn(gen_output)                            
-                            for i in range(len(batch)):
+                            gen_batch.non_tensor_batch["uid"] = np.array(
+                                [str(uuid.uuid4()) for _ in range(len(gen_batch.batch))], dtype=object
+                            )                            
+                            gen_batch = gen_batch.repeat(repeat_times=self.config.worker.rollout.n, interleave=True)
+                            gen_batch = gen_batch.union(gen_output)
+                            print("len of AAA gen_batch: ", len(gen_batch))
+                            input("Press Enter to continue...!!!!!!!!!")
+
+                            gen_batch = gen_batch.union(answer_key)
+                            reward_tensor = self.reward_fn(gen_batch)                            
+                            for i in range(len(batch) // self.config.worker.rollout.n):
                                 new_response = gen_output.batch["responses"][i]
                                 responses_list[i].append(self.tokenizer.decode(new_response, skip_special_tokens=True))
-
                                 valid_response_length_new = gen_output.batch["attention_mask"][i].sum().item()                               
                                 rewards_list[i].append(reward_tensor[i, valid_response_length_new - 1])
                                 raw_responses_list[i].append(new_response)
